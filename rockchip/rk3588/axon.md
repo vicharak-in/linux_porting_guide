@@ -213,203 +213,267 @@ From your adapter schematic and 30-pin definitions:
 
 ### 4. Device Tree Overlays
 
-Save these files in `arch/arm64/boot/dts/rockchip/overlays/`.
+Save Below files that is for reference in `arch/arm64/boot/dts/rockchip/overlays/`.
+Also, Add Overlays in `arch/arm64/boot/dts/rockchip/overlays/Makefile`.
 
-#### Overlay 1: `rk3588-axon-dsi0-ili79600-10inch.dts` (For DPHY0 TX)
+#### Overlay 1: `rk3588-axon-dsi0-ili79600-10inch.dtso` (For DPHY0 TX)
 
 ```dts
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2024 Vicharak Computers PVT LTD
+ */
+
 /dts-v1/;
 /plugin/;
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/display/drm_mipi_dsi.h>
 
-/ {
+&{/} {
     metadata {
-        title = "Raspberry Pi 10.1 inch DSI Touch Display on MIPI TX0";
-        compatible = "vicharak,axon";
+        title = "Enable Raspberry Pi 10.1inch DSI LCD DPHY TX0 Axon";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
         category = "display";
+        exclusive = "panel_rpi_10_1_0", "dsi0", "vp3", "dsi0_in_vp3", "vp3_out_dsi0";
+        description = "Enables support for the Raspberry Pi 10.1-inch ILI79600 Touch LCD on MIPI DSI0.\n";
     };
 
-    fragment@0 {
-        target = <&i2c2>;
-        __overlay__ {
-            status = "okay";
-            #address-cells = <1>;
-            #size-cells = <0>;
+    vcc_mipidcphy0: vcc-mipi-dcphy0 {
+        compatible = "regulator-fixed";
+        regulator-name = "vcc_mipidcphy0";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&pca9554 6 GPIO_ACTIVE_HIGH>;
+        regulator-always-on;
+        regulator-boot-on;
+        enable-active-high;
+        vin-supply = <&vcc1_5v0>;
+    };
+};
 
-            panel_reg: panel_reg@45 {
-                compatible = "raspberrypi,v2-regulator";
-                reg = <0x45>;
-            };
+&mipi_dcphy0 {
+    status = "okay";
+};
 
-            touchscreen@41 {
-                compatible = "ilitek,ili2117", "ilitek,ili2130", "ilitek,ili2132";
-                reg = <0x41>;
-                interrupt-parent = <&gpio3>;
-                interrupts = <0 IRQ_TYPE_LEVEL_LOW>; /* GPIO3_C0 = pin 0 */
-                reset-gpios = <&gpio3 1 GPIO_ACTIVE_LOW>; /* GPIO3_C1 = pin 1 */
-                touchscreen-size-x = <1200>;
-                touchscreen-size-y = <1920>;
-                status = "okay";
+&dsi0 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    panel@0 {
+        compatible = "raspberrypi,dsi-10-1inch", "ilitek,ili79600a";
+        reg = <0>;
+        power-supply = <&panel_reg_0>;
+        backlight = <&panel_reg_0>;
+        status = "okay";
+
+        port {
+            panel_in_dsi0: endpoint {
+                remote-endpoint = <&dsi0_out_panel>;
             };
         };
     };
 
-    fragment@1 {
-        target = <&dsi0>;
-        __overlay__ {
-            status = "okay";
-            #address-cells = <1>;
-            #size-cells = <0>;
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-            panel@0 {
-                compatible = "raspberrypi,dsi-10-1inch", "ilitek,ili79600a";
-                reg = <0>;
-                power-supply = <&panel_reg>;
-                backlight = <&panel_reg>;
-                dsi-lanes = <2>;
-                video-mode = <2>;
-
-                port {
-                    panel_in_dsi0: endpoint {
-                        remote-endpoint = <&dsi0_out_panel>;
-                    };
-                };
+        port@1 {
+            reg = <1>;
+            dsi0_out_panel: endpoint {
+                remote-endpoint = <&panel_in_dsi0>;
             };
-
-            ports {
-                #address-cells = <1>;
-                #size-cells = <0>;
-                port@1 {
-                    reg = <1>;
-                    dsi0_out_panel: endpoint {
-                        remote-endpoint = <&panel_in_dsi0>;
-                    };
-                };
-            };
-        };
-    };
-
-    fragment@2 {
-        target = <&dsi0_dphy>;
-        __overlay__ {
-            status = "okay";
         };
     };
 };
 
+&dsi0_in_vp2 {
+    status = "disabled";
+};
+
+&dsi0_in_vp3 {
+    status = "okay";
+};
+
+&vp3_out_dsi0 {
+    status = "okay";
+};
+
+&route_dsi0 {
+    status = "okay";
+    connect = <&vp3_out_dsi0>;
+};
+
+&i2c2 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    panel_reg_0: panel-regulator@45 {
+        compatible = "raspberrypi,v2-regulator";
+        reg = <0x45>;
+        status = "okay";
+    };
+
+    touchscreen@41 {
+        compatible = "ilitek,ili2117", "ilitek,ili2130", "ilitek,ili2132";
+        reg = <0x41>;
+        interrupt-parent = <&gpio3>;
+        interrupts = <RK_PC0 IRQ_TYPE_LEVEL_LOW>;
+        reset-gpios = <&gpio3 RK_PC1 GPIO_ACTIVE_LOW>;
+        touchscreen-size-x = <1200>;
+        touchscreen-size-y = <1920>;
+        status = "okay";
+    };
+};
 ```
 
----
+#### Overlay 2: `rk3588-axon-dsi1-ili79600-10inch.dtso` (For DPHY1 TX)
 
-#### Overlay 2: `rk3588-axon-dsi1-ili79600-10inch.dts` (For DPHY1 TX)
+```
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2024 Vicharak Computers PVT LTD
+ */
 
-```dts
 /dts-v1/;
 /plugin/;
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/display/drm_mipi_dsi.h>
 
-/ {
+&{/} {
     metadata {
-        title = "Raspberry Pi 10.1 inch DSI Touch Display on MIPI TX1";
-        compatible = "vicharak,axon";
+        title = "Enable Raspberry Pi 10.1inch DSI LCD DPHY TX1 Axon";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
         category = "display";
+        exclusive = "panel_rpi_10_1_1", "dsi1", "vp3", "dsi1_in_vp3", "vp3_out_dsi1";
+        description = "Enables support for the Raspberry Pi 10.1-inch ILI79600 Touch LCD on MIPI DSI1.\n";
     };
 
-    fragment@0 {
-        target = <&i2c5>;
-        __overlay__ {
-            status = "okay";
-            #address-cells = <1>;
-            #size-cells = <0>;
+    vcc_mipidcphy1: vcc-mipi-dcphy1 {
+        compatible = "regulator-fixed";
+        regulator-name = "vcc_mipidcphy1";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&pca9554 7 GPIO_ACTIVE_HIGH>;
+        regulator-always-on;
+        regulator-boot-on;
+        enable-active-high;
+        vin-supply = <&vcc1_5v0>;
+    };
+};
 
-            panel_reg_1: panel_reg@45 {
-                compatible = "raspberrypi,v2-regulator";
-                reg = <0x45>;
-            };
+&mipi_dcphy1 {
+    status = "okay";
+};
 
-            touchscreen@41 {
-                compatible = "ilitek,ili2117", "ilitek,ili2130", "ilitek,ili2132";
-                reg = <0x41>;
-                interrupt-parent = <&gpio3>;
-                interrupts = <5 IRQ_TYPE_LEVEL_LOW>; /* GPIO3_D5 = pin 5 */
-                reset-gpios = <&gpio3 2 GPIO_ACTIVE_LOW>; /* GPIO3_B2 = pin 2 */
-                touchscreen-size-x = <1200>;
-                touchscreen-size-y = <1920>;
-                status = "okay";
+&dsi1 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    panel@0 {
+        compatible = "raspberrypi,dsi-10-1inch", "ilitek,ili79600a";
+        reg = <0>;
+        power-supply = <&panel_reg_1>;
+        backlight = <&panel_reg_1>;
+        status = "okay";
+
+        port {
+            panel_in_dsi1: endpoint {
+                remote-endpoint = <&dsi1_out_panel>;
             };
         };
     };
 
-    fragment@1 {
-        target = <&dsi1>;
-        __overlay__ {
-            status = "okay";
-            #address-cells = <1>;
-            #size-cells = <0>;
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-            panel@0 {
-                compatible = "raspberrypi,dsi-10-1inch", "ilitek,ili79600a";
-                reg = <0>;
-                power-supply = <&panel_reg_1>;
-                backlight = <&panel_reg_1>;
-                dsi-lanes = <2>;
-                video-mode = <2>;
-
-                port {
-                    panel_in_dsi1: endpoint {
-                        remote-endpoint = <&dsi1_out_panel>;
-                    };
-                };
+        port@1 {
+            reg = <1>;
+            dsi1_out_panel: endpoint {
+                remote-endpoint = <&panel_in_dsi1>;
             };
-
-            ports {
-                #address-cells = <1>;
-                #size-cells = <0>;
-                port@1 {
-                    reg = <1>;
-                    dsi1_out_panel: endpoint {
-                        remote-endpoint = <&panel_in_dsi1>;
-                    };
-                };
-            };
-        };
-    };
-
-    fragment@2 {
-        target = <&dsi1_dphy>;
-        __overlay__ {
-            status = "okay";
         };
     };
 };
 
-```
+&dsi1_in_vp2 {
+    status = "disabled";
+};
 
+&dsi1_in_vp3 {
+    status = "okay";
+};
+
+&vp3_out_dsi1 {
+    status = "okay";
+};
+
+&route_dsi1 {
+    status = "okay";
+    connect = <&vp3_out_dsi1>;
+};
+
+&i2c5 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    panel_reg_1: panel-regulator@45 {
+        compatible = "raspberrypi,v2-regulator";
+        reg = <0x45>;
+        status = "okay";
+    };
+
+    touchscreen@41 {
+        compatible = "ilitek,ili2117", "ilitek,ili2130", "ilitek,ili2132";
+        reg = <0x41>;
+        interrupt-parent = <&gpio3>;
+        interrupts = <RK_PD5 IRQ_TYPE_LEVEL_LOW>;
+        reset-gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
+        touchscreen-size-x = <1200>;
+        touchscreen-size-y = <1920>;
+        status = "okay";
+    };
+};
+```
 ---
 
 ### 5. Build and Verification
 
-* Build the kernel and device tree overlays:
-```bash
-make ARCH=arm64 rockchip_defconfig
-make ARCH=arm64 dtbs
+* [Build the kernel](https://docs.vicharak.in/vicharak_sbcs/vaaman/vaaman-linux/linux-development-guide/linux-kernel/):
 
+- Copy compiled overlay to Axon `/boot/overlays-$(uname -r)` Folder.
+
+```bash
+scp arch/arm64/boot/dts/rockchip/overlays/rk3588-axon-dsi-101inch-tx*.dtbo \
+    <user>@<axon-ip>:~/
 ```
 
+On the board:
+
+```bash
+sudo cp rk3588-axon-dsi*.dtbo /boot/overlays-$(uname -r)-axon/
+sudo vicharak-config     # Overlays → Manage overlays -> tick "Enable <your overlay> DPHY TX0/TX1" using spacebar → Ok
+sudo reboot
+```
 
 * Test I2C detection on boot (ensure `0x41` and `0x45` show as `UU` or detect properly):
 ```bash
 # For TX0 (I2C2)
-i2cdetect -y 2
+sudo i2cdetect -y 2
 
 # For TX1 (I2C5)
-i2cdetect -y 5
+sudo i2cdetect -y 5
 
 ```
 
-
-* Verify DRM connector initialization via `dmesg | grep -i ili79600` and `modetest -M rockchip`.
+* Verify DRM connector initialization via `dmesg | grep -i dsi`
