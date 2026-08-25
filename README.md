@@ -1,5 +1,4 @@
-# linux_porting_guide
-// Linux Driver Porting Guide for Vicharak Board
+# Linux Driver Porting Guide for Vicharak Board
 
 | Processor | Board | MIPI DSI Interface | MIPI CSI Interface |
 | --- | --- | --- | --- |
